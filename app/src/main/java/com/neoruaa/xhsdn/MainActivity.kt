@@ -256,7 +256,7 @@ class MainActivity : ComponentActivity() {
     }
     private val pendingRoute = mutableStateOf<AppRoute?>(null)
     private val _autoDownloadIntentUrl = mutableStateOf<String?>(null)
-    private var context: Context =  this
+    private var context: Context = this
     private var pendingStorageAction: (() -> Unit)? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -305,7 +305,11 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= 33) { // Android 13
             val permission = Manifest.permission.POST_NOTIFICATIONS
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    permission
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
                 notificationPermissionLauncher.launch(permission)
             }
         }
@@ -330,14 +334,14 @@ class MainActivity : ComponentActivity() {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
             }
-            
+
             // 处理自动下载
             val autoUrl by _autoDownloadIntentUrl
             LaunchedEffect(autoUrl, appSettings.selectiveDownload) {
-            autoUrl?.let { url ->
-                     settingsRepository.awaitReady()
-                     val snapshot = settingsRepository.currentSettings
-                     if (url.isNotEmpty()) {
+                autoUrl?.let { url ->
+                    settingsRepository.awaitReady()
+                    val snapshot = settingsRepository.currentSettings
+                    if (url.isNotEmpty()) {
                         viewModel.updateUrl(url)
                         ensureStoragePermission {
                             if (snapshot.selectiveDownload) {
@@ -346,15 +350,15 @@ class MainActivity : ComponentActivity() {
                                 viewModel.startDownload { showToast(it) }
                             }
                         }
-                     }
-                     _autoDownloadIntentUrl.value = null // 消费完毕
+                    }
+                    _autoDownloadIntentUrl.value = null // 消费完毕
                 }
             }
-            
+
             // 剪贴板检测相关状态
             context = LocalContext.current
             var detectedXhsLink by remember { mutableStateOf<String?>(null) }
-            
+
             // 监听生命周期 ON_RESUME 和 ON_PAUSE 进行剪贴板监听器管理
             val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
@@ -367,26 +371,30 @@ class MainActivity : ComponentActivity() {
                 val currentAutoRead = appSettings.autoReadClipboard
                 val currentShowBubble = appSettings.showClipboardBubble
 
-                Log.d("XHS_Debug", "checkClipboard: AutoRead=$currentAutoRead, ShowBubble=$currentShowBubble, ManualInput=${appSettings.manualInputLinks}")
+                Log.d(
+                    "XHS_Debug",
+                    "checkClipboard: AutoRead=$currentAutoRead, ShowBubble=$currentShowBubble, ManualInput=${appSettings.manualInputLinks}"
+                )
 
                 // 2. Access Clipboard
-                val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clipboard =
+                    context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 if (clipboard.hasPrimaryClip()) {
                     val clipData = clipboard.primaryClip
                     if (clipData != null && clipData.itemCount > 0) {
                         val clipText = clipData.getItemAt(0).text?.toString() ?: ""
                         Log.d("XHS_Debug", "ClipText: $clipText")
-                        
+
                         val url = UrlUtils.extractFirstUrl(clipText)
                         Log.d("XHS_Debug", "Extracted URL: $url")
-                        
+
                         if (url != null && UrlUtils.isXhsLink(url)) {
                             // 3. Logic Branching
-                            
+
                             if (currentAutoRead) {
                                 // A. Auto Download Priority
                                 viewModel.updateUrl(clipText)
-                                
+
                                 // ... (Auto download logic)
                                 Log.d("XHS_Debug", "Triggering Auto Download")
 
@@ -408,16 +416,21 @@ class MainActivity : ComponentActivity() {
                                     )
 
                                     // Clear Clipboard
-                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("", ""))
+                                    clipboard.setPrimaryClip(
+                                        android.content.ClipData.newPlainText(
+                                            "",
+                                            ""
+                                        )
+                                    )
 
                                     // Ensure bubble is dismissed
                                     detectedXhsLink = null
                                 }
-                                
+
                             } else if (currentShowBubble) {
                                 // B. Show Bubble
                                 Log.d("XHS_Debug", "Showing Bubble")
-                                detectedXhsLink = clipText 
+                                detectedXhsLink = clipText
                             } else {
                                 Log.d("XHS_Debug", "Bubble disabled in settings")
                             }
@@ -437,17 +450,17 @@ class MainActivity : ComponentActivity() {
                     detectedXhsLink = null
                 }
             }
-            
+
             val scope = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycleScope
             val checkClipboardState = rememberUpdatedState(newValue = { checkClipboard() })
-            
+
             val clipboardListener = remember {
                 android.content.ClipboardManager.OnPrimaryClipChangedListener {
-                     // 延迟检测，解决 listener 触发时 ClipData 可能尚未准备好的问题
-                     scope.launch {
-                         kotlinx.coroutines.delay(300) // 300ms 延迟
-                         checkClipboardState.value()
-                     }
+                    // 延迟检测，解决 listener 触发时 ClipData 可能尚未准备好的问题
+                    scope.launch {
+                        kotlinx.coroutines.delay(300) // 300ms 延迟
+                        checkClipboardState.value()
+                    }
                 }
             }
 
@@ -455,7 +468,8 @@ class MainActivity : ComponentActivity() {
                 val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
                     if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                         // 注册监听器
-                        val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clipboard =
+                            context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboard.addPrimaryClipChangedListener(clipboardListener)
                         // 延迟检测：Android 10+ 需要等待窗口焦点才能访问剪贴板
                         scope.launch {
@@ -464,13 +478,15 @@ class MainActivity : ComponentActivity() {
                         }
                     } else if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) {
                         // 移除监听器
-                        val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clipboard =
+                            context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         clipboard.removePrimaryClipChangedListener(clipboardListener)
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
-                    val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clipboard =
+                        context.getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
                     clipboard.removePrimaryClipChangedListener(clipboardListener)
                     lifecycleOwner.lifecycle.removeObserver(observer)
                 }
@@ -544,8 +560,6 @@ class MainActivity : ComponentActivity() {
                                                     } else {
                                                         // 先开始下载（创建任务）
                                                         viewModel.startDownload { showToast(it) }
-
-
                                                     }
                                                 } else {
                                                     showToast(getString(R.string.clipboard_no_xhs_link))
@@ -716,6 +730,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -858,11 +873,12 @@ class MainActivity : ComponentActivity() {
             showToast(getString(R.string.file_does_not_exist, item.path))
             return
         }
-        val mimeType = item.media.mimeType.takeUnless { it == "application/octet-stream" } ?: when (item.type) {
-            MediaType.VIDEO -> "video/*"
-            MediaType.IMAGE -> "image/*"
-            MediaType.OTHER -> "*/*"
-        }
+        val mimeType = item.media.mimeType.takeUnless { it == "application/octet-stream" }
+            ?: when (item.type) {
+                MediaType.VIDEO -> "video/*"
+                MediaType.IMAGE -> "image/*"
+                MediaType.OTHER -> "*/*"
+            }
         val uri = item.media.legacyPath?.let { path ->
             FileProvider.getUriForFile(this, "$packageName.fileprovider", File(path))
         } ?: item.media.androidUri
@@ -1252,9 +1268,9 @@ private fun HistoryPage(
     val newlyInsertedTaskId = firstFilteredTask
         ?.takeIf {
             it.id != lastFirstFilteredTaskId &&
-                historyUiState.query == lastScrollQuery &&
-                historyUiState.selectedFilter.ordinal == lastScrollFilterOrdinal &&
-                System.currentTimeMillis() - it.createdAt in 0..5_000L
+                    historyUiState.query == lastScrollQuery &&
+                    historyUiState.selectedFilter.ordinal == lastScrollFilterOrdinal &&
+                    System.currentTimeMillis() - it.createdAt in 0..5_000L
         }
         ?.id
     var lastDetectedXhsLink by remember { mutableStateOf(detectedXhsLink) }
@@ -1767,7 +1783,6 @@ private fun HistoryPage(
                     }
                 }
             }
-
         }
 
         if (useOs4) {
@@ -1971,28 +1986,31 @@ private fun TaskCell(
     }
     var showActions by remember(task.id) { mutableStateOf(false) }
     var deleteAfterMenuDismiss by remember(task.id) { mutableStateOf(false) }
-    val statusText = stringResource(when (task.status) {
-        TaskStatus.QUEUED -> R.string.task_status_queued
-        TaskStatus.RESOLVING -> R.string.download_resolving
-        TaskStatus.DOWNLOADING -> R.string.task_status_downloading
-        TaskStatus.COMPLETED -> R.string.task_status_completed
-        TaskStatus.FAILED -> R.string.task_status_failed
-        TaskStatus.WAITING_FOR_USER -> R.string.download_select
-        TaskStatus.PAUSED -> R.string.download_paused
-        TaskStatus.PARTIAL -> R.string.download_partial
-        TaskStatus.CANCELLED -> R.string.download_cancelled
-        TaskStatus.SKIPPED -> R.string.download_skipped
-    })
+    val statusText = stringResource(
+        when (task.status) {
+            TaskStatus.QUEUED -> R.string.task_status_queued
+            TaskStatus.RESOLVING -> R.string.download_resolving
+            TaskStatus.DOWNLOADING -> R.string.task_status_downloading
+            TaskStatus.COMPLETED -> R.string.task_status_completed
+            TaskStatus.FAILED -> R.string.task_status_failed
+            TaskStatus.WAITING_FOR_USER -> R.string.download_select
+            TaskStatus.PAUSED -> R.string.download_paused
+            TaskStatus.PARTIAL -> R.string.download_partial
+            TaskStatus.CANCELLED -> R.string.download_cancelled
+            TaskStatus.SKIPPED -> R.string.download_skipped
+        }
+    )
 
     val typeText = when (// Check if this is a web crawl task (created from WebViewActivity)
         task.noteType) {
         com.neoruaa.xhsdn.data.NoteType.UNKNOWN if (UrlUtils.isXhsLink(task.noteUrl) ||
                 task.noteUrl.startsWith("http") && task.totalFiles > 0) -> stringResource(R.string.note_type_web_crawl)
+
         com.neoruaa.xhsdn.data.NoteType.IMAGE -> stringResource(R.string.note_type_image)
         com.neoruaa.xhsdn.data.NoteType.VIDEO -> stringResource(R.string.note_type_video)
         com.neoruaa.xhsdn.data.NoteType.UNKNOWN -> stringResource(R.string.note_type_unknown)
     }
-    
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -2124,12 +2142,19 @@ private fun TaskCell(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.files_completed_format, task.completedFiles, task.totalFiles),
+                            text = stringResource(
+                                R.string.files_completed_format,
+                                task.completedFiles,
+                                task.totalFiles
+                            ),
                             fontSize = 11.sp,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                         )
                         Text(
-                            text = stringResource(R.string.progress_format, (task.progress * 100).toInt()),
+                            text = stringResource(
+                                R.string.progress_format,
+                                (task.progress * 100).toInt()
+                            ),
                             fontSize = 11.sp,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                         )
@@ -2138,10 +2163,10 @@ private fun TaskCell(
                     // 进度条
                     LinearProgressIndicator(
                         progress = task.progress,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp))
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
                     )
                 }
             }
@@ -2161,19 +2186,30 @@ private fun TaskCell(
                         val edgeWidth = 16.dp.toPx().coerceAtMost(size.width / 2)
                         val edgeSize = androidx.compose.ui.geometry.Size(edgeWidth, size.height)
                         val transparent = cardColor.copy(alpha = 0f)
-                        val leftFade = Brush.horizontalGradient(listOf(cardColor, transparent), endX = edgeWidth)
+                        val leftFade = Brush.horizontalGradient(
+                            listOf(cardColor, transparent),
+                            endX = edgeWidth
+                        )
                         val rightStart = size.width - edgeWidth
-                        val rightFade = Brush.horizontalGradient(listOf(transparent, cardColor), startX = rightStart, endX = size.width)
+                        val rightFade = Brush.horizontalGradient(
+                            listOf(transparent, cardColor),
+                            startX = rightStart,
+                            endX = size.width
+                        )
                         onDrawWithContent {
                             drawContent()
                             val before = previewScroll.value.toFloat()
                             val after = (previewScroll.maxValue - previewScroll.value).toFloat()
                             val leftOverflow = if (isRtl) after else before
                             val rightOverflow = if (isRtl) before else after
-                            if (leftOverflow > 0) drawRect(leftFade, size = edgeSize,
-                                alpha = (leftOverflow / edgeWidth).coerceIn(0f, 1f))
-                            if (rightOverflow > 0) drawRect(rightFade, topLeft = Offset(rightStart, 0f), size = edgeSize,
-                                alpha = (rightOverflow / edgeWidth).coerceIn(0f, 1f))
+                            if (leftOverflow > 0) drawRect(
+                                leftFade, size = edgeSize,
+                                alpha = (leftOverflow / edgeWidth).coerceIn(0f, 1f)
+                            )
+                            if (rightOverflow > 0) drawRect(
+                                rightFade, topLeft = Offset(rightStart, 0f), size = edgeSize,
+                                alpha = (rightOverflow / edgeWidth).coerceIn(0f, 1f)
+                            )
                         }
                     }
                     .horizontalScroll(previewScroll)
@@ -2204,10 +2240,12 @@ private fun TaskCell(
         }
 
         val statusMessage = task.errorMessage?.takeIf(String::isNotBlank)
-        val hasTaskActions = task.status != TaskStatus.COMPLETED && task.status != TaskStatus.SKIPPED
+        val hasTaskActions =
+            task.status != TaskStatus.COMPLETED && task.status != TaskStatus.SKIPPED
         if (statusMessage != null || hasTaskActions) {
             Row(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2231,10 +2269,23 @@ private fun TaskCell(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (task.isActive || task.status == TaskStatus.PAUSED) {
-                            ActionIconButton(imageVector = MiuixIcons.Regular.Close, contentDescription = stringResource(R.string.download_cancel), onClick = onCancel)
+                            ActionIconButton(
+                                imageVector = MiuixIcons.Regular.Close,
+                                contentDescription = stringResource(R.string.download_cancel),
+                                onClick = onCancel
+                            )
                         }
-                        if (task.status in setOf(TaskStatus.QUEUED, TaskStatus.RESOLVING, TaskStatus.DOWNLOADING)) {
-                            ActionIconButton(imageVector = MiuixIcons.Regular.Pause, contentDescription = stringResource(R.string.download_pause), onClick = onStop)
+                        if (task.status in setOf(
+                                TaskStatus.QUEUED,
+                                TaskStatus.RESOLVING,
+                                TaskStatus.DOWNLOADING
+                            )
+                        ) {
+                            ActionIconButton(
+                                imageVector = MiuixIcons.Regular.Pause,
+                                contentDescription = stringResource(R.string.download_pause),
+                                onClick = onStop
+                            )
                         }
                         if (task.status in setOf(TaskStatus.PAUSED, TaskStatus.WAITING_FOR_USER)) {
                             ActionIconButton(imageVector = if (task.status == TaskStatus.WAITING_FOR_USER) {
@@ -2244,9 +2295,22 @@ private fun TaskCell(
                                 },
                                 contentDescription = stringResource(if (task.status == TaskStatus.WAITING_FOR_USER) R.string.download_select else R.string.download_resume), onClick = onContinue)
                         }
-                        if (task.status in setOf(TaskStatus.FAILED, TaskStatus.PARTIAL, TaskStatus.CANCELLED)) {
-                            ActionIconButton(imageVector = MiuixIcons.Regular.Refresh, contentDescription = stringResource(R.string.retry), onClick = onRetry)
-                            ActionIconButton(imageVector = MiuixIcons.Regular.Link, contentDescription = stringResource(R.string.web_crawl_option), onClick = onWebCrawl)
+                        if (task.status in setOf(
+                                TaskStatus.FAILED,
+                                TaskStatus.PARTIAL,
+                                TaskStatus.CANCELLED
+                            )
+                        ) {
+                            ActionIconButton(
+                                imageVector = MiuixIcons.Regular.Refresh,
+                                contentDescription = stringResource(R.string.retry),
+                                onClick = onRetry
+                            )
+                            ActionIconButton(
+                                imageVector = MiuixIcons.Regular.Link,
+                                contentDescription = stringResource(R.string.web_crawl_option),
+                                onClick = onWebCrawl
+                            )
                         }
                     }
                 }
@@ -2268,11 +2332,23 @@ private fun TaskCell(
                 val actions = listOf(
                     DropdownItem(
                         text = stringResource(R.string.common_copy_link),
-                        icon = { Icon(MiuixIcons.Regular.Copy, contentDescription = null, modifier = it) }
+                        icon = {
+                            Icon(
+                                MiuixIcons.Regular.Copy,
+                                contentDescription = null,
+                                modifier = it
+                            )
+                        }
                     ),
                     DropdownItem(
                         text = stringResource(R.string.delete_content_description),
-                        icon = { Icon(MiuixIcons.Regular.Delete, contentDescription = null, modifier = it) }
+                        icon = {
+                            Icon(
+                                MiuixIcons.Regular.Delete,
+                                contentDescription = null,
+                                modifier = it
+                            )
+                        }
                     )
                 )
                 actions.forEachIndexed { index, action ->
@@ -2311,8 +2387,10 @@ private fun TaskDownloadSpeed(
         downloadSpeeds.map { it[taskId] ?: 0L }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = 0L)
     Text(
-        text = stringResource(R.string.task_download_speed,
-            android.text.format.Formatter.formatShortFileSize(LocalContext.current, bytesPerSecond)),
+        text = stringResource(
+            R.string.task_download_speed,
+            android.text.format.Formatter.formatShortFileSize(LocalContext.current, bytesPerSecond)
+        ),
         modifier = modifier,
         fontSize = 12.sp,
         color = MiuixTheme.colorScheme.onSurfaceVariantSummary
@@ -2327,20 +2405,24 @@ private fun rememberThumbnail(item: MediaItem): ImageBitmap? {
     if (cachedBitmap != null) {
         return cachedBitmap
     }
-    
+
     val state = produceState<ImageBitmap?>(initialValue = null, key1 = item.path) {
         value = withContext(Dispatchers.IO) {
             // 再次检查缓存（可能在等待期间被其他协程加载）
             thumbnailCache.get(item.path)?.let { return@withContext it }
-            
+
             val bitmap = runCatching {
                 when (item.type) {
-                    MediaType.IMAGE -> context.decodeSampledBitmap(item.media, 200, 200)?.asImageBitmap()
-                    MediaType.VIDEO -> context.createVideoThumbnail(item.media, 200, 200)?.asImageBitmap()
+                    MediaType.IMAGE -> context.decodeSampledBitmap(item.media, 200, 200)
+                        ?.asImageBitmap()
+
+                    MediaType.VIDEO -> context.createVideoThumbnail(item.media, 200, 200)
+                        ?.asImageBitmap()
+
                     MediaType.OTHER -> null
                 }
             }.getOrNull()
-            
+
             // 存入缓存
             bitmap?.let { thumbnailCache.put(item.path, it) }
             bitmap
@@ -2350,7 +2432,11 @@ private fun rememberThumbnail(item: MediaItem): ImageBitmap? {
 }
 
 
-private fun decodeSampledBitmap(path: String, reqWidth: Int, reqHeight: Int): android.graphics.Bitmap? {
+private fun decodeSampledBitmap(
+    path: String,
+    reqWidth: Int,
+    reqHeight: Int
+): android.graphics.Bitmap? {
     val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
     android.graphics.BitmapFactory.decodeFile(path, options)
     if (options.outWidth <= 0 || options.outHeight <= 0) return null
@@ -2359,7 +2445,11 @@ private fun decodeSampledBitmap(path: String, reqWidth: Int, reqHeight: Int): an
     return android.graphics.BitmapFactory.decodeFile(path, options)
 }
 
-private fun calculateInSampleSize(options: android.graphics.BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+private fun calculateInSampleSize(
+    options: android.graphics.BitmapFactory.Options,
+    reqWidth: Int,
+    reqHeight: Int
+): Int {
     val (height: Int, width: Int) = options.run { outHeight to outWidth }
     var inSampleSize = 1
     if (height > reqHeight || width > reqWidth) {

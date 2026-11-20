@@ -40,3 +40,6 @@ google-services.json
 python/
 *.bak
 /xhs_workspace
+
+# codegraph local index
+.codegraph/

@@ -122,8 +122,16 @@ class MainViewModel(application: Application, private val savedStateHandle: Save
         updateUrl(clipboard.primaryClip?.getItemAt(0)?.coerceToText(appContext)?.toString().orEmpty())
     }
 
-    fun startDownload(onError: (String) -> Unit) = submit(false, false, onError)
-    fun startSelectiveDownload(onError: (String) -> Unit) = submit(true, false, onError)
+    fun startDownload(onError: (String) -> Unit) = submit(
+        selection = false,
+        infoOnly = false,
+        onError = onError
+    )
+    fun startSelectiveDownload(onError: (String) -> Unit) = submit(
+        selection = true,
+        infoOnly = false,
+        onError = onError
+    )
     fun saveNoteInformation(onError: (String) -> Unit) = submit(false, true, onError)
     private fun submit(selection: Boolean, infoOnly: Boolean, onError: (String) -> Unit) {
         val input = uiState.value.urlInput

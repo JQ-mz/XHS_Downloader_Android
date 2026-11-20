@@ -40,10 +40,10 @@ object XhsUrlParser {
         val normalized = url?.let { if (it.startsWith("http", true)) it else "https://$it" } ?: return null
         if (!isSupportedUrl(normalized) || isShortUrl(normalized)) return null
         val segments = URI(normalized).path.trim('/').split('/')
-        when {
-            segments.size == 2 && segments[0] == "explore" -> segments[1]
-            segments.size == 3 && segments.take(2) == listOf("discovery", "item") -> segments[2]
-            segments.size == 4 && segments.take(2) == listOf("user", "profile") -> segments[3]
+        when (segments.size) {
+            2 if segments[0] == "explore" -> segments[1]
+            3 if segments.take(2) == listOf("discovery", "item") -> segments[2]
+            4 if segments.take(2) == listOf("user", "profile") -> segments[3]
             else -> null
         }?.takeIf { it.matches(Regex("[A-Za-z0-9_-]+")) }
     }.getOrNull()

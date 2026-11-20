@@ -59,7 +59,7 @@ class FileDownloader @JvmOverloads constructor(
                 .followSslRedirects(true)
                 .connectionPool(ConnectionPool(12, 10, TimeUnit.MINUTES))
                 .dispatcher(dispatcher)
-                .protocols(Arrays.asList(Protocol.HTTP_2, Protocol.HTTP_1_1))
+                .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
                 .build()
         }
 
