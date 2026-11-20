@@ -78,7 +78,8 @@ import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 import androidx.compose.ui.res.stringResource
-import top.yukonga.miuix.kmp.squircle.squircleSurface
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
 class WebViewActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
@@ -312,10 +313,10 @@ private fun WebViewScreen(
                         end = windowLayoutInfo.contentEndPadding + 12.dp,
                         bottom = 12.dp
                     )
-                    .squircleSurface(
-                        color = MiuixTheme.colorScheme.background,
-                        cornerRadius = 18.dp
-                    )
+                    // WebView's Vulkan draw functor crashes inside the squircle shader-mask
+                    // offscreen layer on some Android 16 devices; use a plain canvas clip.
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MiuixTheme.colorScheme.background)
             ) {
 
 

@@ -65,7 +65,7 @@
 - 当前项目没有底部导航。未来新增时使用与目的地语义匹配的图标，OS4 使用对应 Glass 导航控件，避免与导航展开按钮混淆。
 - miuix 组件直接使用其内置圆角与 Glass 形状。自定义形状继续使用 `top.yukonga.miuix.kmp.squircle.*`，依照内容和性能选择 modifier。
   - 非点击纯色背景且内容不溢出时使用 `squircleBackground(color, radius)`，保留无 offscreen layer 的路径，避免额外 clip。
-  - 图片或必须裁剪的内容使用 `squircleClip(radius)`。
+  - 图片或必须裁剪的内容使用 `squircleClip(radius)`。WebView 容器例外：squircle 的 shader mask 走 `CompositingStrategy.Offscreen` 离屏层，WebView 的 Vulkan 绘制 functor 在部分 Android 16 设备上会崩溃，改用普通 `clip(RoundedCornerShape(...))`。
   - 可点击元素使用 `squircleSurface(color, radius)` + `.clickable {}`，保证涟漪裁进圆角。条件可点击时按 `isSelectable` 退化为 `squircleBackground`。
   - 3dp 小徽章保持 `clip(RoundedCornerShape(3.dp))`，文字使用 9.sp Bold Monospace。
 - **页面骨架** 列表页面使用 miuix `Scaffold` + 共享 `AdaptiveTopAppBar(scrollBehavior)` + `LazyColumn`。媒体详情可按内容使用 `LazyVerticalStaggeredGrid`，WebView 页面可使用固定操作区 + 可伸缩内容区。
